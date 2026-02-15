@@ -1,0 +1,2 @@
+main DSTACK_USAGE:8 DSTACK_LEVEL:8 FILE:"wordclock.c" LINE:10
+select_row DSTACK_USAGE:2 DSTACK_LEVEL:10 FILE:"wordclock.c" LINE:155
