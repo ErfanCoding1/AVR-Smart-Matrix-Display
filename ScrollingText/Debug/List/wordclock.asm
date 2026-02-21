@@ -1177,6 +1177,30 @@ _font_alphabet:
 	.DB  0x0,0x0,0x0,0x66,0x3C,0x18,0x3C,0x66
 	.DB  0x0,0x0,0x0,0x66,0x66,0x7C,0x60,0x3C
 	.DB  0x0,0x0,0x0,0x3C,0x30,0x18,0xC,0x3C
+_font_numbers:
+	.DB  0x0,0x18,0x18,0x1C,0x18,0x18,0x18,0x7E
+	.DB  0x0,0x3C,0x66,0x60,0x30,0xC,0x6,0x7E
+	.DB  0x0,0x3C,0x66,0x60,0x38,0x60,0x66,0x3C
+	.DB  0x0,0x30,0x38,0x34,0x32,0x7E,0x30,0x30
+	.DB  0x0,0x7E,0x6,0x3E,0x60,0x60,0x66,0x3C
+	.DB  0x0,0x3C,0x66,0x6,0x3E,0x66,0x66,0x3C
+	.DB  0x0,0x7E,0x66,0x30,0x30,0x18,0x18,0x18
+	.DB  0x0,0x3C,0x66,0x66,0x3C,0x66,0x66,0x3C
+	.DB  0x0,0x3C,0x66,0x66,0x7C,0x60,0x66,0x3C
+	.DB  0x0,0x3C,0x66,0x76,0x6E,0x66,0x66,0x3C
+
+_0x0:
+	.DB  0x45,0x72,0x66,0x61,0x6E,0x0
+
+__GLOBAL_INI_TBL:
+	.DW  0x06
+	.DW  _0x6
+	.DW  _0x0*2
+
+_0xFFFFFFFF:
+	.DW  0
+
+#define __GLOBAL_INI_TBL_PRESENT 1
 
 __RESET:
 	CLI
@@ -1207,6 +1231,29 @@ __CLEAR_SRAM:
 	ST   X+,R30
 	SBIW R24,1
 	BRNE __CLEAR_SRAM
+
+;GLOBAL VARIABLES INITIALIZATION
+	LDI  R30,LOW(__GLOBAL_INI_TBL*2)
+	LDI  R31,HIGH(__GLOBAL_INI_TBL*2)
+__GLOBAL_INI_NEXT:
+	LPM  R24,Z+
+	LPM  R25,Z+
+	SBIW R24,0
+	BREQ __GLOBAL_INI_END
+	LPM  R26,Z+
+	LPM  R27,Z+
+	LPM  R0,Z+
+	LPM  R1,Z+
+	MOVW R22,R30
+	MOVW R30,R0
+__GLOBAL_INI_LOOP:
+	LPM  R0,Z+
+	ST   X+,R0
+	SBIW R24,1
+	BRNE __GLOBAL_INI_LOOP
+	MOVW R30,R22
+	RJMP __GLOBAL_INI_NEXT
+__GLOBAL_INI_END:
 
 ;GPIOR0 INITIALIZATION
 	LDI  R30,__GPIOR0_INIT
@@ -1264,85 +1311,63 @@ __CLEAR_SRAM:
 ;void Show(int char_index, int matrix_num);
 ;void UpdateDisplay();
 ;void ClearBuffer(void);
+;void ScrollMessage(char* str);
+;void ShiftLeft(unsigned char new_column[8]);
+;unsigned char GetMatrixByte(unsigned char row, unsigned char start_col);
 ;
-;unsigned char display_matrix[8][8];
+;
+;unsigned char scroll_buffer[8][64];
+;void ScrollBlank(int count);
 ;
 ;void main(void)
-; 0000 001B {
+; 0000 0020 {
 
 	.CSEG
 _main:
 ; .FSTART _main
-; 0000 001C // Declare your local variables here
-; 0000 001D 
-; 0000 001E SPI_MasterInit();
-	RCALL _SPI_MasterInit
-; 0000 001F Max7219_init();
-	RCALL _Max7219_init
-; 0000 0020 MAX7219_clear();
-	RCALL _MAX7219_clear
-; 0000 0021 ClearBuffer();
-	RCALL _ClearBuffer
+; 0000 0021 // Declare your local variables here
 ; 0000 0022 
-; 0000 0023 while (1)
+; 0000 0023 SPI_MasterInit();
+	RCALL _SPI_MasterInit
+; 0000 0024 Max7219_init();
+	RCALL _Max7219_init
+; 0000 0025 MAX7219_clear();
+	RCALL _MAX7219_clear
+; 0000 0026 ClearBuffer();
+	RCALL _ClearBuffer
+; 0000 0027 
+; 0000 0028 while (1)
 _0x3:
-; 0000 0024       {
-; 0000 0025 
-; 0000 0026     Show(4, 0);
-	LDI  R30,LOW(4)
-	LDI  R31,HIGH(4)
-	ST   -Y,R31
-	ST   -Y,R30
-	LDI  R26,LOW(0)
+; 0000 0029       {
+; 0000 002A 
+; 0000 002B     //Show(4, 0);
+; 0000 002C     //Show(17, 1);
+; 0000 002D     //Show(5, 2);
+; 0000 002E    // Show(0, 3);
+; 0000 002F     //Show(13, 4)
+; 0000 0030 
+; 0000 0031     ScrollMessage("Erfan");
+	__POINTW2MN _0x6,0
+	RCALL _ScrollMessage
+; 0000 0032     ScrollBlank(64);
+	LDI  R26,LOW(64)
 	LDI  R27,0
-	RCALL _Show
-; 0000 0027     Show(17, 1);
-	LDI  R30,LOW(17)
-	LDI  R31,HIGH(17)
-	ST   -Y,R31
-	ST   -Y,R30
-	LDI  R26,LOW(1)
+	RCALL _ScrollBlank
+; 0000 0033     delay_ms(100);
+	LDI  R26,LOW(100)
 	LDI  R27,0
-	RCALL _Show
-; 0000 0028     Show(5, 2);
-	LDI  R30,LOW(5)
-	LDI  R31,HIGH(5)
-	ST   -Y,R31
-	ST   -Y,R30
-	LDI  R26,LOW(2)
-	LDI  R27,0
-	RCALL _Show
-; 0000 0029     Show(0, 3);
-	LDI  R30,LOW(0)
-	LDI  R31,HIGH(0)
-	ST   -Y,R31
-	ST   -Y,R30
-	LDI  R26,LOW(3)
-	LDI  R27,0
-	RCALL _Show
-; 0000 002A     Show(13, 4);
-	LDI  R30,LOW(13)
-	LDI  R31,HIGH(13)
-	ST   -Y,R31
-	ST   -Y,R30
-	LDI  R26,LOW(4)
-	LDI  R27,0
-	RCALL _Show
-; 0000 002B 
-; 0000 002C     UpdateDisplay();
-	RCALL _UpdateDisplay
-; 0000 002D 
-; 0000 002E     delay_ms(1000);
-	LDI  R26,LOW(1000)
-	LDI  R27,HIGH(1000)
 	CALL _delay_ms
-; 0000 002F 
-; 0000 0030       }
+; 0000 0034 
+; 0000 0035       }
 	RJMP _0x3
-; 0000 0031 }
-_0x6:
-	RJMP _0x6
+; 0000 0036 }
+_0x7:
+	RJMP _0x7
 ; .FEND
+
+	.DSEG
+_0x6:
+	.BYTE 0x6
 ;
 ;
 ;/*
@@ -1444,19 +1469,21 @@ _0x6:
 ;
 ;
 ;void Write(unsigned char add1, unsigned char data1,
-; 0000 0097                  unsigned char add2, unsigned char data2,
-; 0000 0098                  unsigned char add3, unsigned char data3,
-; 0000 0099                  unsigned char add4, unsigned char data4,
-; 0000 009A                  unsigned char add5, unsigned char data5,
-; 0000 009B                  unsigned char add6, unsigned char data6,
-; 0000 009C                  unsigned char add7, unsigned char data7,
-; 0000 009D                  unsigned char add8, unsigned char data8
-; 0000 009E                 )
-; 0000 009F {
+; 0000 009C                  unsigned char add2, unsigned char data2,
+; 0000 009D                  unsigned char add3, unsigned char data3,
+; 0000 009E                  unsigned char add4, unsigned char data4,
+; 0000 009F                  unsigned char add5, unsigned char data5,
+; 0000 00A0                  unsigned char add6, unsigned char data6,
+; 0000 00A1                  unsigned char add7, unsigned char data7,
+; 0000 00A2                  unsigned char add8, unsigned char data8
+; 0000 00A3                 )
+; 0000 00A4 {
+
+	.CSEG
 _Write:
 ; .FSTART _Write
-; 0000 00A0     //Load = 0
-; 0000 00A1     PORTB &= ~(1 << PORTB2);
+; 0000 00A5     //Load = 0
+; 0000 00A6     PORTB &= ~(1 << PORTB2);
 	ST   -Y,R26
 ;	add1 -> Y+15
 ;	data1 -> Y+14
@@ -1475,120 +1502,120 @@ _Write:
 ;	add8 -> Y+1
 ;	data8 -> Y+0
 	CBI  0x5,2
-; 0000 00A2 
-; 0000 00A3     delay_us(1);
+; 0000 00A7 
+; 0000 00A8     delay_us(1);
 	__DELAY_USB 3
-; 0000 00A4 
-; 0000 00A5     //send address and data for each matrix | same data
-; 0000 00A6     SPI_Send(add8);  SPI_Send(data8);
+; 0000 00A9 
+; 0000 00AA     //send address and data for each matrix | same data
+; 0000 00AB     SPI_Send(add8);  SPI_Send(data8);
 	LDD  R26,Y+1
 	RCALL _SPI_Send
 	LD   R26,Y
 	RCALL _SPI_Send
-; 0000 00A7     SPI_Send(add7);  SPI_Send(data7);
+; 0000 00AC     SPI_Send(add7);  SPI_Send(data7);
 	LDD  R26,Y+3
 	RCALL _SPI_Send
 	LDD  R26,Y+2
 	RCALL _SPI_Send
-; 0000 00A8     SPI_Send(add6);  SPI_Send(data6);
+; 0000 00AD     SPI_Send(add6);  SPI_Send(data6);
 	LDD  R26,Y+5
 	RCALL _SPI_Send
 	LDD  R26,Y+4
 	RCALL _SPI_Send
-; 0000 00A9     SPI_Send(add5);  SPI_Send(data5);
+; 0000 00AE     SPI_Send(add5);  SPI_Send(data5);
 	LDD  R26,Y+7
 	RCALL _SPI_Send
 	LDD  R26,Y+6
 	RCALL _SPI_Send
-; 0000 00AA     SPI_Send(add4);  SPI_Send(data4);
+; 0000 00AF     SPI_Send(add4);  SPI_Send(data4);
 	LDD  R26,Y+9
 	RCALL _SPI_Send
 	LDD  R26,Y+8
 	RCALL _SPI_Send
-; 0000 00AB     SPI_Send(add3);  SPI_Send(data3);
+; 0000 00B0     SPI_Send(add3);  SPI_Send(data3);
 	LDD  R26,Y+11
 	RCALL _SPI_Send
 	LDD  R26,Y+10
 	RCALL _SPI_Send
-; 0000 00AC     SPI_Send(add2);  SPI_Send(data2);
+; 0000 00B1     SPI_Send(add2);  SPI_Send(data2);
 	LDD  R26,Y+13
 	RCALL _SPI_Send
 	LDD  R26,Y+12
 	RCALL _SPI_Send
-; 0000 00AD     SPI_Send(add1);  SPI_Send(data1);
+; 0000 00B2     SPI_Send(add1);  SPI_Send(data1);
 	LDD  R26,Y+15
 	RCALL _SPI_Send
 	LDD  R26,Y+14
 	RCALL _SPI_Send
-; 0000 00AE 
-; 0000 00AF 
-; 0000 00B0     delay_us(1);
+; 0000 00B3 
+; 0000 00B4 
+; 0000 00B5     delay_us(1);
 	__DELAY_USB 3
-; 0000 00B1 
-; 0000 00B2 
-; 0000 00B3     //Load=1
-; 0000 00B4     PORTB |= (1 << PORTB2);
+; 0000 00B6 
+; 0000 00B7 
+; 0000 00B8     //Load=1
+; 0000 00B9     PORTB |= (1 << PORTB2);
 	SBI  0x5,2
-; 0000 00B5 
-; 0000 00B6     delay_us(1);
+; 0000 00BA 
+; 0000 00BB     delay_us(1);
 	__DELAY_USB 3
-; 0000 00B7 }
+; 0000 00BC }
 	ADIW R28,16
 	RET
 ; .FEND
 ;
 ;
 ;void SPI_MasterInit(void){
-; 0000 00BA void SPI_MasterInit(void){
+; 0000 00BF void SPI_MasterInit(void){
 _SPI_MasterInit:
 ; .FSTART _SPI_MasterInit
-; 0000 00BB     // Set MOSI and SCK output
-; 0000 00BC     DDRB |= (1<<DDB2) | (1<<DDB3) | (1<<DDB5);
+; 0000 00C0     // Set MOSI and SCK output
+; 0000 00C1     DDRB |= (1<<DDB2) | (1<<DDB3) | (1<<DDB5);
 	IN   R30,0x4
 	ORI  R30,LOW(0x2C)
 	OUT  0x4,R30
-; 0000 00BD     /* Enable SPI, Master, set clock rate fck/16 */
-; 0000 00BE     SPCR = (1<<SPE) | (1<<MSTR) | (1<<SPR1) | (1<<SPR0);
+; 0000 00C2     /* Enable SPI, Master, set clock rate fck/16 */
+; 0000 00C3     SPCR = (1<<SPE) | (1<<MSTR) | (1<<SPR1) | (1<<SPR0);
 	LDI  R30,LOW(83)
 	OUT  0x2C,R30
-; 0000 00BF     // make LOAD high to make ICs wait
-; 0000 00C0     PORTB |= (1<<PORTB2);
+; 0000 00C4     // make LOAD high to make ICs wait
+; 0000 00C5     PORTB |= (1<<PORTB2);
 	SBI  0x5,2
-; 0000 00C1     delay_ms(100);
+; 0000 00C6     delay_ms(100);
 	LDI  R26,LOW(100)
-	RJMP _0x2000002
-; 0000 00C2 }
+	RJMP _0x2000003
+; 0000 00C7 }
 ; .FEND
 ;
 ;
 ;void SPI_Send(unsigned char data){
-; 0000 00C5 void SPI_Send(unsigned char data){
+; 0000 00CA void SPI_Send(unsigned char data){
 _SPI_Send:
 ; .FSTART _SPI_Send
-; 0000 00C6 
-; 0000 00C7     SPDR = data;
+; 0000 00CB 
+; 0000 00CC     SPDR = data;
 	ST   -Y,R26
 ;	data -> Y+0
 	LD   R30,Y
 	OUT  0x2E,R30
-; 0000 00C8     while(!(SPSR & (1 << SPIF)));
-_0x7:
+; 0000 00CD     while(!(SPSR & (1 << SPIF)));
+_0x8:
 	IN   R30,0x2D
 	ANDI R30,LOW(0x80)
-	BREQ _0x7
-; 0000 00C9 
-; 0000 00CA }
+	BREQ _0x8
+; 0000 00CE 
+; 0000 00CF }
 	ADIW R28,1
 	RET
 ; .FEND
 ;
 ;
 ;void Max7219_init(){
-; 0000 00CD void Max7219_init(){
+; 0000 00D2 void Max7219_init(){
 _Max7219_init:
 ; .FSTART _Max7219_init
-; 0000 00CE 
-; 0000 00CF     Write(0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00); //shutdown
+; 0000 00D3 
+; 0000 00D4     Write(0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00,0x0C, 0x00); //shutdown
 	RCALL SUBOPT_0x0
 	RCALL SUBOPT_0x0
 	RCALL SUBOPT_0x0
@@ -1598,12 +1625,12 @@ _Max7219_init:
 	RCALL SUBOPT_0x0
 	LDI  R30,LOW(12)
 	RCALL SUBOPT_0x1
-; 0000 00D0     delay_ms(50);
+; 0000 00D5     delay_ms(50);
 	LDI  R26,LOW(50)
 	LDI  R27,0
 	CALL _delay_ms
-; 0000 00D1 
-; 0000 00D2     Write(0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00); //  (Display Test Of ...
+; 0000 00D6 
+; 0000 00D7     Write(0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00,0x0F, 0x00); //  (Display Test Of ...
 	RCALL SUBOPT_0x2
 	RCALL SUBOPT_0x2
 	RCALL SUBOPT_0x2
@@ -1613,7 +1640,7 @@ _Max7219_init:
 	RCALL SUBOPT_0x2
 	LDI  R30,LOW(15)
 	RCALL SUBOPT_0x1
-; 0000 00D3     Write(0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00); //  (No Decode for L ...
+; 0000 00D8     Write(0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00,0x09, 0x00); //  (No Decode for L ...
 	RCALL SUBOPT_0x3
 	RCALL SUBOPT_0x3
 	RCALL SUBOPT_0x3
@@ -1623,7 +1650,7 @@ _Max7219_init:
 	RCALL SUBOPT_0x3
 	LDI  R30,LOW(9)
 	RCALL SUBOPT_0x1
-; 0000 00D4     Write(0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07); //  (Scan Limit)
+; 0000 00D9     Write(0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07,0x0B, 0x07); //  (Scan Limit)
 	RCALL SUBOPT_0x4
 	RCALL SUBOPT_0x4
 	RCALL SUBOPT_0x4
@@ -1635,7 +1662,7 @@ _Max7219_init:
 	ST   -Y,R30
 	LDI  R26,LOW(7)
 	RCALL _Write
-; 0000 00D5     Write(0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F);   //Intenstity
+; 0000 00DA     Write(0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F,0x0A, 0x0F);   //Intenstity
 	RCALL SUBOPT_0x5
 	RCALL SUBOPT_0x5
 	RCALL SUBOPT_0x5
@@ -1647,8 +1674,8 @@ _Max7219_init:
 	ST   -Y,R30
 	LDI  R26,LOW(15)
 	RCALL _Write
-; 0000 00D6 
-; 0000 00D7     Write(0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01); //wake up
+; 0000 00DB 
+; 0000 00DC     Write(0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01,0x0C, 0x01); //wake up
 	RCALL SUBOPT_0x6
 	RCALL SUBOPT_0x6
 	RCALL SUBOPT_0x6
@@ -1660,30 +1687,30 @@ _Max7219_init:
 	ST   -Y,R30
 	LDI  R26,LOW(1)
 	RCALL _Write
-; 0000 00D8     delay_ms(50);
+; 0000 00DD     delay_ms(50);
 	LDI  R26,LOW(50)
-_0x2000002:
+_0x2000003:
 	LDI  R27,0
 	CALL _delay_ms
-; 0000 00D9 }
+; 0000 00DE }
 	RET
 ; .FEND
 ;
 ;void MAX7219_clear(){
-; 0000 00DB void MAX7219_clear(){
+; 0000 00E0 void MAX7219_clear(){
 _MAX7219_clear:
 ; .FSTART _MAX7219_clear
-; 0000 00DC 
-; 0000 00DD     unsigned char row;
-; 0000 00DE 
-; 0000 00DF     for (row = 1; row <= 8; row++) {
+; 0000 00E1 
+; 0000 00E2     unsigned char row;
+; 0000 00E3 
+; 0000 00E4     for (row = 1; row <= 8; row++) {
 	ST   -Y,R17
 ;	row -> R17
 	LDI  R17,LOW(1)
-_0xB:
+_0xC:
 	CPI  R17,9
-	BRSH _0xC
-; 0000 00E0         Write(row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00);  // set all rows to 0
+	BRSH _0xD
+; 0000 00E5         Write(row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00,row, 0x00);  // set all rows to 0
 	RCALL SUBOPT_0x7
 	RCALL SUBOPT_0x7
 	ST   -Y,R17
@@ -1692,227 +1719,582 @@ _0xB:
 	ST   -Y,R17
 	LDI  R26,LOW(0)
 	RCALL _Write
-; 0000 00E1         delay_ms(10);
-	LDI  R26,LOW(10)
-	LDI  R27,0
-	CALL _delay_ms
-; 0000 00E2     }
+; 0000 00E6         delay_ms(10);
+	RCALL SUBOPT_0x8
+; 0000 00E7     }
 	SUBI R17,-1
-	RJMP _0xB
-_0xC:
-; 0000 00E3 }
-	RJMP _0x2000001
+	RJMP _0xC
+_0xD:
+; 0000 00E8 }
+	RJMP _0x2000002
 ; .FEND
 ;
 ;//show dislpay matrix values
-;void UpdateDisplay(){
-; 0000 00E6 void UpdateDisplay(){
+;void UpdateDisplay() {
+; 0000 00EB void UpdateDisplay() {
 _UpdateDisplay:
 ; .FSTART _UpdateDisplay
-; 0000 00E7 
-; 0000 00E8     unsigned char r;
-; 0000 00E9 
-; 0000 00EA     for(r=1; r<=8; r++){
+; 0000 00EC     unsigned char r;
+; 0000 00ED     for (r = 1; r <= 8; r++) {
 	ST   -Y,R17
 ;	r -> R17
 	LDI  R17,LOW(1)
-_0xE:
+_0xF:
 	CPI  R17,9
-	BRSH _0xF
-; 0000 00EB 
-; 0000 00EC         Write(
-; 0000 00ED         r, display_matrix[r-1][0],    //Matrix 1
-; 0000 00EE         r, display_matrix[r-1][1],    //Matrix 2
-; 0000 00EF         r, display_matrix[r-1][2],    //Matrix 3
-; 0000 00F0         r, display_matrix[r-1][3],    //Matrix 4
-; 0000 00F1         r, display_matrix[r-1][4],    //Matrix 5
-; 0000 00F2         r, display_matrix[r-1][5],    //Matrix 6
-; 0000 00F3         r, display_matrix[r-1][6],    //Matrix 7
-; 0000 00F4         r, display_matrix[r-1][7]     //Matrix 8
-; 0000 00F5         );
-	RCALL SUBOPT_0x8
-	SUBI R30,LOW(-_display_matrix)
-	SBCI R31,HIGH(-_display_matrix)
+	BRSH _0x10
+; 0000 00EE         Write(
+; 0000 00EF             r, GetMatrixByte(r-1, 0),
+; 0000 00F0             r, GetMatrixByte(r-1, 8),
+; 0000 00F1             r, GetMatrixByte(r-1, 16),
+; 0000 00F2             r, GetMatrixByte(r-1, 24),
+; 0000 00F3             r, GetMatrixByte(r-1, 32),
+; 0000 00F4             r, GetMatrixByte(r-1, 40),
+; 0000 00F5             r, GetMatrixByte(r-1, 48),
+; 0000 00F6             r, GetMatrixByte(r-1, 56)
+; 0000 00F7         );
 	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,1
-	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,2
-	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,3
-	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,4
-	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,5
-	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,6
-	RCALL SUBOPT_0x9
-	__ADDW1MN _display_matrix,7
-	LD   R26,Z
+	LDI  R26,LOW(0)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(8)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(16)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(24)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(32)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(40)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(48)
+	RCALL SUBOPT_0xA
+	LDI  R26,LOW(56)
+	RCALL _GetMatrixByte
+	MOV  R26,R30
 	RCALL _Write
-; 0000 00F6 
-; 0000 00F7 
 ; 0000 00F8     }
 	SUBI R17,-1
-	RJMP _0xE
-_0xF:
-; 0000 00F9 
-; 0000 00FA 
-; 0000 00FB }
-_0x2000001:
+	RJMP _0xF
+_0x10:
+; 0000 00F9 }
+_0x2000002:
 	LD   R17,Y+
 	RET
 ; .FEND
 ;
-;/*
-;//put values in display matrix
-;void Show(int char_index, int matrix_num){
 ;
-;    unsigned char s;
-;
-;    for(s=0; s<8; s++){
-;
-;        display_matrix[s][matrix_num] = font_alphabet[char_index][s];
-;
-;    }
-;
-;}
-;*/
-;
-;void Show(int char_index, int matrix_num){
-; 0000 010C void Show(int char_index, int matrix_num){
-_Show:
-; .FSTART _Show
-; 0000 010D     unsigned char s, b;
-; 0000 010E     unsigned char original_byte;
-; 0000 010F     unsigned char mirrored_byte;
-; 0000 0110 
-; 0000 0111     for(s=0; s<8; s++){
-	ST   -Y,R27
+;unsigned char GetMatrixByte(unsigned char row, unsigned char start_col) {
+; 0000 00FC unsigned char GetMatrixByte(unsigned char row, unsigned char start_col) {
+_GetMatrixByte:
+; .FSTART _GetMatrixByte
+; 0000 00FD     unsigned char b, result = 0;
+; 0000 00FE     for (b = 0; b < 8; b++) {
 	ST   -Y,R26
-	CALL __SAVELOCR4
-;	char_index -> Y+6
-;	matrix_num -> Y+4
-;	s -> R17
-;	b -> R16
-;	original_byte -> R19
-;	mirrored_byte -> R18
+	ST   -Y,R17
+	ST   -Y,R16
+;	row -> Y+3
+;	start_col -> Y+2
+;	b -> R17
+;	result -> R16
+	LDI  R16,0
 	LDI  R17,LOW(0)
-_0x11:
+_0x12:
 	CPI  R17,8
-	BRSH _0x12
-; 0000 0112         original_byte = font_alphabet[char_index][s];
-	LDD  R30,Y+6
-	LDD  R31,Y+6+1
-	CALL __LSLW3
-	SUBI R30,LOW(-_font_alphabet*2)
-	SBCI R31,HIGH(-_font_alphabet*2)
-	MOVW R26,R30
+	BRSH _0x13
+; 0000 00FF         if (scroll_buffer[row][start_col + b] == 0x01) {
+	LDD  R30,Y+3
+	RCALL SUBOPT_0xB
+	MOVW R0,R30
+	LDD  R26,Y+2
+	CLR  R27
 	MOV  R30,R17
 	LDI  R31,0
 	ADD  R30,R26
 	ADC  R31,R27
-	LPM  R19,Z
-; 0000 0113         mirrored_byte = 0;
-	LDI  R18,LOW(0)
-; 0000 0114 
-; 0000 0115 
-; 0000 0116         for(b=0; b<8; b++) {
-	LDI  R16,LOW(0)
-_0x14:
-	CPI  R16,8
-	BRSH _0x15
-; 0000 0117             if(original_byte & (1 << b)) {
-	MOV  R30,R16
-	LDI  R26,LOW(1)
-	LDI  R27,HIGH(1)
-	CALL __LSLW12
-	MOV  R26,R19
-	LDI  R27,0
-	AND  R30,R26
-	AND  R31,R27
-	SBIW R30,0
-	BREQ _0x16
-; 0000 0118                 mirrored_byte |= (1 << (7 - b));
+	MOVW R26,R0
+	ADD  R26,R30
+	ADC  R27,R31
+	LD   R26,X
+	CPI  R26,LOW(0x1)
+	BRNE _0x14
+; 0000 0100             result |= (1 << (7 - b));
 	LDI  R30,LOW(7)
-	SUB  R30,R16
+	SUB  R30,R17
 	LDI  R26,LOW(1)
 	CALL __LSLB12
-	OR   R18,R30
-; 0000 0119             }
-; 0000 011A         }
-_0x16:
-	SUBI R16,-1
-	RJMP _0x14
-_0x15:
-; 0000 011B 
-; 0000 011C 
-; 0000 011D         display_matrix[s][matrix_num] = mirrored_byte;
-	RCALL SUBOPT_0xA
-	LDD  R26,Y+4
-	LDD  R27,Y+4+1
-	ADD  R30,R26
-	ADC  R31,R27
-	ST   Z,R18
-; 0000 011E     }
+	OR   R16,R30
+; 0000 0101         }
+; 0000 0102     }
+_0x14:
 	SUBI R17,-1
-	RJMP _0x11
-_0x12:
-; 0000 011F }
-	CALL __LOADLOCR4
-	ADIW R28,8
-	RET
+	RJMP _0x12
+_0x13:
+; 0000 0103     return result;
+	MOV  R30,R16
+	RJMP _0x2000001
+; 0000 0104 }
 ; .FEND
 ;
+;/*
+;//display matrix initialization
+;void Show(int char_index, int matrix_num){
+;    unsigned char s, b;
+;    unsigned char original_byte;
+;    unsigned char mirrored_byte;
+;
+;    for(s=0; s<8; s++){
+;        original_byte = font_alphabet[char_index][s];
+;        mirrored_byte = 0;
+;
+;
+;        for(b=0; b<8; b++) {
+;            if(original_byte & (1 << b)) {
+;                mirrored_byte |= (1 << (7 - b));
+;            }
+;        }
+;
+;
+;        display_matrix[s][matrix_num] = mirrored_byte;
+;    }
+;}
+;*/
+;
 ;void ClearBuffer(void) {
-; 0000 0121 void ClearBuffer(void) {
+; 0000 011E void ClearBuffer(void) {
 _ClearBuffer:
 ; .FSTART _ClearBuffer
-; 0000 0122     unsigned char r, m;
-; 0000 0123 
-; 0000 0124 
-; 0000 0125     for (r = 0; r < 8; r++) {
+; 0000 011F    unsigned char r, c;
+; 0000 0120 
+; 0000 0121 
+; 0000 0122     for (r = 0; r < 8; r++) {
 	ST   -Y,R17
 	ST   -Y,R16
 ;	r -> R17
-;	m -> R16
+;	c -> R16
 	LDI  R17,LOW(0)
-_0x18:
+_0x16:
 	CPI  R17,8
-	BRSH _0x19
-; 0000 0126 
-; 0000 0127         for (m = 0; m < 8; m++) {
+	BRSH _0x17
+; 0000 0123         for (c = 0; c < 64; c++) {
 	LDI  R16,LOW(0)
-_0x1B:
-	CPI  R16,8
-	BRSH _0x1C
-; 0000 0128 
-; 0000 0129             display_matrix[r][m] = 0x00;
-	RCALL SUBOPT_0xA
+_0x19:
+	CPI  R16,64
+	BRSH _0x1A
+; 0000 0124             scroll_buffer[r][c] = 0x00;
+	MOV  R30,R17
+	RCALL SUBOPT_0xB
 	MOVW R26,R30
 	CLR  R30
 	ADD  R26,R16
 	ADC  R27,R30
 	ST   X,R30
-; 0000 012A         }
+; 0000 0125         }
 	SUBI R16,-1
-	RJMP _0x1B
-_0x1C:
-; 0000 012B     }
+	RJMP _0x19
+_0x1A:
+; 0000 0126     }
 	SUBI R17,-1
-	RJMP _0x18
-_0x19:
-; 0000 012C 
-; 0000 012D     UpdateDisplay();
+	RJMP _0x16
+_0x17:
+; 0000 0127 
+; 0000 0128     UpdateDisplay();
 	RCALL _UpdateDisplay
-; 0000 012E }
+; 0000 0129 }
 	LD   R16,Y+
 	LD   R17,Y+
 	RET
 ; .FEND
+;
+;void ScrollBlank(int count) {
+; 0000 012B void ScrollBlank(int count) {
+_ScrollBlank:
+; .FSTART _ScrollBlank
+; 0000 012C     int i;
+; 0000 012D     unsigned char row;
+; 0000 012E     unsigned char blank_col[8] = {0,0,0,0,0,0,0,0};
+; 0000 012F 
+; 0000 0130     for(i = 0; i < count; i++) {
+	ST   -Y,R27
+	ST   -Y,R26
+	SBIW R28,8
+	LDI  R30,LOW(0)
+	ST   Y,R30
+	STD  Y+1,R30
+	STD  Y+2,R30
+	STD  Y+3,R30
+	STD  Y+4,R30
+	STD  Y+5,R30
+	STD  Y+6,R30
+	STD  Y+7,R30
+	CALL __SAVELOCR4
+;	count -> Y+12
+;	i -> R16,R17
+;	row -> R19
+;	blank_col -> Y+4
+	__GETWRN 16,17,0
+_0x1C:
+	LDD  R30,Y+12
+	LDD  R31,Y+12+1
+	CP   R16,R30
+	CPC  R17,R31
+	BRGE _0x1D
+; 0000 0131         ShiftLeft(blank_col);
+	MOVW R26,R28
+	ADIW R26,4
+	RCALL SUBOPT_0xC
+; 0000 0132         UpdateDisplay();
+; 0000 0133         delay_ms(10);
+; 0000 0134     }
+	__ADDWRN 16,17,1
+	RJMP _0x1C
+_0x1D:
+; 0000 0135 }
+	CALL __LOADLOCR4
+	ADIW R28,14
+	RET
+; .FEND
+;
+;
+;void ShiftLeft(unsigned char new_column[8]) {
+; 0000 0138 void ShiftLeft(unsigned char new_column[8]) {
+_ShiftLeft:
+; .FSTART _ShiftLeft
+; 0000 0139     unsigned char r, c;
+; 0000 013A 
+; 0000 013B     for (r = 0; r < 8; r++) {
+	ST   -Y,R27
+	ST   -Y,R26
+	ST   -Y,R17
+	ST   -Y,R16
+;	new_column -> Y+2
+;	r -> R17
+;	c -> R16
+	LDI  R17,LOW(0)
+_0x1F:
+	CPI  R17,8
+	BRSH _0x20
+; 0000 013C         // shit all columns to left
+; 0000 013D         for (c = 0; c < 63; c++) {
+	LDI  R16,LOW(0)
+_0x22:
+	CPI  R16,63
+	BRSH _0x23
+; 0000 013E             scroll_buffer[r][c] = scroll_buffer[r][c+1];
+	MOV  R30,R17
+	RCALL SUBOPT_0xB
+	MOVW R22,R30
+	MOVW R26,R30
+	MOV  R30,R16
+	LDI  R31,0
+	ADD  R30,R26
+	ADC  R31,R27
+	MOVW R0,R30
+	MOVW R26,R22
+	MOV  R30,R16
+	LDI  R31,0
+	ADIW R30,1
+	ADD  R26,R30
+	ADC  R27,R31
+	LD   R30,X
+	MOVW R26,R0
+	ST   X,R30
+; 0000 013F         }
+	SUBI R16,-1
+	RJMP _0x22
+_0x23:
+; 0000 0140 
+; 0000 0141 
+; 0000 0142         if (new_column[r] == 1) {
+	LDD  R26,Y+2
+	LDD  R27,Y+2+1
+	CLR  R30
+	ADD  R26,R17
+	ADC  R27,R30
+	LD   R26,X
+	CPI  R26,LOW(0x1)
+	BRNE _0x24
+; 0000 0143             // max7219 only accepts 16 bits
+; 0000 0144             scroll_buffer[r][63] = 0x01;
+	RCALL SUBOPT_0xD
+	LDI  R26,LOW(1)
+	RJMP _0x47
+; 0000 0145         } else {
+_0x24:
+; 0000 0146             scroll_buffer[r][63] = 0x00;
+	RCALL SUBOPT_0xD
+	LDI  R26,LOW(0)
+_0x47:
+	STD  Z+0,R26
+; 0000 0147         }
+; 0000 0148 
+; 0000 0149 
+; 0000 014A     }
+	SUBI R17,-1
+	RJMP _0x1F
+_0x20:
+; 0000 014B }
+_0x2000001:
+	LDD  R17,Y+1
+	LDD  R16,Y+0
+	ADIW R28,4
+	RET
+; .FEND
+;
+;
+;
+;void ScrollMessage(char* str) {
+; 0000 014F void ScrollMessage(char* str) {
+_ScrollMessage:
+; .FSTART _ScrollMessage
+; 0000 0150     int i, char_idx;
+; 0000 0151     unsigned char col, row, type;
+; 0000 0152     unsigned char current_col_data[8];
+; 0000 0153     unsigned char row_data;
+; 0000 0154 
+; 0000 0155     for (i = 0; str[i] != '\0'; i++) {
+	ST   -Y,R27
+	ST   -Y,R26
+	SBIW R28,10
+	CALL __SAVELOCR6
+;	*str -> Y+16
+;	i -> R16,R17
+;	char_idx -> R18,R19
+;	col -> R21
+;	row -> R20
+;	type -> Y+15
+;	current_col_data -> Y+7
+;	row_data -> Y+6
+	__GETWRN 16,17,0
+_0x27:
+	MOVW R30,R16
+	LDD  R26,Y+16
+	LDD  R27,Y+16+1
+	ADD  R26,R30
+	ADC  R27,R31
+	LD   R30,X
+	CPI  R30,0
+	BRNE PC+2
+	RJMP _0x28
+; 0000 0156         char c = str[i];
+; 0000 0157 
+; 0000 0158 
+; 0000 0159         if (c >= 'A' && c <= 'Z') {
+	SBIW R28,1
+;	*str -> Y+17
+;	type -> Y+16
+;	current_col_data -> Y+8
+;	row_data -> Y+7
+;	c -> Y+0
+	MOVW R30,R16
+	LDD  R26,Y+17
+	LDD  R27,Y+17+1
+	ADD  R26,R30
+	ADC  R27,R31
+	LD   R30,X
+	ST   Y,R30
+	LD   R26,Y
+	CPI  R26,LOW(0x41)
+	BRLO _0x2A
+	CPI  R26,LOW(0x5B)
+	BRLO _0x2B
+_0x2A:
+	RJMP _0x29
+_0x2B:
+; 0000 015A             type = 0;
+	LDI  R30,LOW(0)
+	STD  Y+16,R30
+; 0000 015B             char_idx = c - 'A';
+	LD   R30,Y
+	LDI  R31,0
+	SUBI R30,LOW(65)
+	SBCI R31,HIGH(65)
+	MOVW R18,R30
+; 0000 015C         }
+; 0000 015D         else if (c >= 'a' && c <= 'z') {
+	RJMP _0x2C
+_0x29:
+	LD   R26,Y
+	CPI  R26,LOW(0x61)
+	BRLO _0x2E
+	CPI  R26,LOW(0x7B)
+	BRLO _0x2F
+_0x2E:
+	RJMP _0x2D
+_0x2F:
+; 0000 015E             type = 0;
+	LDI  R30,LOW(0)
+	STD  Y+16,R30
+; 0000 015F             char_idx = (c - 'a') + 27;
+	LD   R30,Y
+	LDI  R31,0
+	SUBI R30,LOW(97)
+	SBCI R31,HIGH(97)
+	ADIW R30,27
+	MOVW R18,R30
+; 0000 0160         }
+; 0000 0161         else if (c == ' ') {
+	RJMP _0x30
+_0x2D:
+	LD   R26,Y
+	CPI  R26,LOW(0x20)
+	BREQ _0x48
+; 0000 0162             type = 0;
+; 0000 0163             char_idx = 26;
+; 0000 0164         }
+; 0000 0165         else if (c >= '0' && c <= '9') {
+	CPI  R26,LOW(0x30)
+	BRLO _0x34
+	CPI  R26,LOW(0x3A)
+	BRLO _0x35
+_0x34:
+	RJMP _0x33
+_0x35:
+; 0000 0166             type = 1;
+	LDI  R30,LOW(1)
+	STD  Y+16,R30
+; 0000 0167             char_idx = (c == '0') ? 9 : (c - '1');
+	LD   R26,Y
+	LDI  R27,0
+	SBIW R26,48
+	BRNE _0x36
+	LDI  R30,LOW(9)
+	LDI  R31,HIGH(9)
+	RJMP _0x37
+_0x36:
+	LD   R30,Y
+	LDI  R31,0
+	SBIW R30,49
+_0x37:
+	MOVW R18,R30
+; 0000 0168         }
+; 0000 0169         else {
+	RJMP _0x39
+_0x33:
+; 0000 016A             type = 0;
+_0x48:
+	LDI  R30,LOW(0)
+	STD  Y+16,R30
+; 0000 016B             char_idx = 26;
+	__GETWRN 18,19,26
+; 0000 016C         }
+_0x39:
+_0x30:
+_0x2C:
+; 0000 016D 
+; 0000 016E 
+; 0000 016F         for (col = 0; col < 8; col++) {
+	LDI  R21,LOW(0)
+_0x3B:
+	CPI  R21,8
+	BRSH _0x3C
+; 0000 0170             for (row = 0; row < 8; row++) {
+	LDI  R20,LOW(0)
+_0x3E:
+	CPI  R20,8
+	BRSH _0x3F
+; 0000 0171 
+; 0000 0172 
+; 0000 0173                 if (type == 0) {
+	LDD  R30,Y+16
+	CPI  R30,0
+	BRNE _0x40
+; 0000 0174                     row_data = font_alphabet[char_idx][row];
+	MOVW R30,R18
+	CALL __LSLW3
+	SUBI R30,LOW(-_font_alphabet*2)
+	SBCI R31,HIGH(-_font_alphabet*2)
+	RJMP _0x49
+; 0000 0175                 } else {
+_0x40:
+; 0000 0176                     row_data = font_numbers[char_idx][row];
+	MOVW R30,R18
+	CALL __LSLW3
+	SUBI R30,LOW(-_font_numbers*2)
+	SBCI R31,HIGH(-_font_numbers*2)
+_0x49:
+	MOVW R26,R30
+	MOV  R30,R20
+	LDI  R31,0
+	ADD  R30,R26
+	ADC  R31,R27
+	LPM  R0,Z
+	STD  Y+7,R0
+; 0000 0177                 }
+; 0000 0178 
+; 0000 0179 
+; 0000 017A                 if (row_data & (1 << col)) {
+	MOV  R30,R21
+	LDI  R26,LOW(1)
+	LDI  R27,HIGH(1)
+	CALL __LSLW12
+	LDD  R26,Y+7
+	LDI  R27,0
+	AND  R30,R26
+	AND  R31,R27
+	SBIW R30,0
+	BREQ _0x42
+; 0000 017B                     current_col_data[row] = 1;
+	RCALL SUBOPT_0xE
+	LDI  R30,LOW(1)
+	RJMP _0x4A
+; 0000 017C                 } else {
+_0x42:
+; 0000 017D                     current_col_data[row] = 0;
+	RCALL SUBOPT_0xE
+	LDI  R30,LOW(0)
+_0x4A:
+	ST   X,R30
+; 0000 017E                 }
+; 0000 017F             }
+	SUBI R20,-1
+	RJMP _0x3E
+_0x3F:
+; 0000 0180 
+; 0000 0181 
+; 0000 0182             ShiftLeft(current_col_data);
+	MOVW R26,R28
+	ADIW R26,8
+	RCALL SUBOPT_0xC
+; 0000 0183             UpdateDisplay();
+; 0000 0184             delay_ms(10);
+; 0000 0185         }
+	SUBI R21,-1
+	RJMP _0x3B
+_0x3C:
+; 0000 0186 
+; 0000 0187 
+; 0000 0188         for(row = 0; row < 8; row++) current_col_data[row] = 0;
+	LDI  R20,LOW(0)
+_0x45:
+	CPI  R20,8
+	BRSH _0x46
+	RCALL SUBOPT_0xE
+	LDI  R30,LOW(0)
+	ST   X,R30
+	SUBI R20,-1
+	RJMP _0x45
+_0x46:
+; 0000 0189 ShiftLeft(current_col_data);
+	MOVW R26,R28
+	ADIW R26,8
+	RCALL SUBOPT_0xC
+; 0000 018A         UpdateDisplay();
+; 0000 018B         delay_ms(10);
+; 0000 018C     }
+	ADIW R28,1
+	__ADDWRN 16,17,1
+	RJMP _0x27
+_0x28:
+; 0000 018D }
+	CALL __LOADLOCR6
+	ADIW R28,18
+	RET
+; .FEND
+;
+;
 
 	.DSEG
-_display_matrix:
-	.BYTE 0x40
+_scroll_buffer:
+	.BYTE 0x200
 
 	.CSEG
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 7 TIMES, CODE SIZE REDUCTION:9 WORDS
@@ -1980,28 +2362,58 @@ SUBOPT_0x7:
 	ST   -Y,R30
 	RET
 
-;OPTIMIZER ADDED SUBROUTINE, CALLED 8 TIMES, CODE SIZE REDUCTION:25 WORDS
+;OPTIMIZER ADDED SUBROUTINE, CALLED 4 TIMES, CODE SIZE REDUCTION:3 WORDS
 SUBOPT_0x8:
+	LDI  R26,LOW(10)
+	LDI  R27,0
+	JMP  _delay_ms
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 8 TIMES, CODE SIZE REDUCTION:11 WORDS
+SUBOPT_0x9:
 	ST   -Y,R17
 	MOV  R30,R17
-	LDI  R31,0
-	SBIW R30,1
-	CALL __LSLW3
+	SUBI R30,LOW(1)
+	ST   -Y,R30
 	RET
 
-;OPTIMIZER ADDED SUBROUTINE, CALLED 7 TIMES, CODE SIZE REDUCTION:9 WORDS
-SUBOPT_0x9:
-	LD   R30,Z
+;OPTIMIZER ADDED SUBROUTINE, CALLED 7 TIMES, CODE SIZE REDUCTION:15 WORDS
+SUBOPT_0xA:
+	RCALL _GetMatrixByte
 	ST   -Y,R30
+	RJMP SUBOPT_0x9
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:7 WORDS
+SUBOPT_0xB:
+	LDI  R31,0
+	CALL __LSLW2
+	CALL __LSLW4
+	SUBI R30,LOW(-_scroll_buffer)
+	SBCI R31,HIGH(-_scroll_buffer)
+	RET
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:5 WORDS
+SUBOPT_0xC:
+	RCALL _ShiftLeft
+	RCALL _UpdateDisplay
 	RJMP SUBOPT_0x8
 
-;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:1 WORDS
-SUBOPT_0xA:
+;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:3 WORDS
+SUBOPT_0xD:
 	MOV  R30,R17
 	LDI  R31,0
-	CALL __LSLW3
-	SUBI R30,LOW(-_display_matrix)
-	SBCI R31,HIGH(-_display_matrix)
+	CALL __LSLW2
+	CALL __LSLW4
+	__ADDW1MN _scroll_buffer,63
+	RET
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:5 WORDS
+SUBOPT_0xE:
+	MOV  R30,R20
+	LDI  R31,0
+	MOVW R26,R28
+	ADIW R26,8
+	ADD  R26,R30
+	ADC  R27,R31
 	RET
 
 
@@ -2042,6 +2454,9 @@ __LSLW12L:
 __LSLW12R:
 	RET
 
+__LSLW4:
+	LSL  R30
+	ROL  R31
 __LSLW3:
 	LSL  R30
 	ROL  R31
@@ -2052,6 +2467,10 @@ __LSLW2:
 	ROL  R31
 	RET
 
+__SAVELOCR6:
+	ST   -Y,R21
+__SAVELOCR5:
+	ST   -Y,R20
 __SAVELOCR4:
 	ST   -Y,R19
 __SAVELOCR3:
@@ -2061,6 +2480,10 @@ __SAVELOCR2:
 	ST   -Y,R16
 	RET
 
+__LOADLOCR6:
+	LDD  R21,Y+5
+__LOADLOCR5:
+	LDD  R20,Y+4
 __LOADLOCR4:
 	LDD  R19,Y+3
 __LOADLOCR3:

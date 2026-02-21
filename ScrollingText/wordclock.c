@@ -20,8 +20,13 @@ void MAX7219_clear(void);
 void Show(int char_index, int matrix_num);
 void UpdateDisplay();
 void ClearBuffer(void);
+void ScrollMessage(char* str);
+void ShiftLeft(unsigned char new_column[8]);
+unsigned char GetMatrixByte(unsigned char row, unsigned char start_col); 
+ 
 
-unsigned char display_matrix[8][8];
+unsigned char scroll_buffer[8][64];
+void ScrollBlank(int count); 
 
 void main(void)
 {
@@ -35,15 +40,15 @@ ClearBuffer();
 while (1)
       {
           
-    Show(4, 0); 
-    Show(17, 1); 
-    Show(5, 2); 
-    Show(0, 3);  
-    Show(13, 4); 
-    
-    UpdateDisplay();
-    
-    delay_ms(1000);   
+    //Show(4, 0); 
+    //Show(17, 1); 
+    //Show(5, 2); 
+   // Show(0, 3);  
+    //Show(13, 4)
+     
+    ScrollMessage("Erfan");
+    ScrollBlank(64);
+    delay_ms(100);   
       
       }
 }
@@ -227,29 +232,34 @@ void MAX7219_clear(){
 }
 
 //show dislpay matrix values
-void UpdateDisplay(){
-
+void UpdateDisplay() {
     unsigned char r;
-    
-    for(r=1; r<=8; r++){
-    
+    for (r = 1; r <= 8; r++) {     
         Write(
-        r, display_matrix[r-1][0],    //Matrix 1 
-        r, display_matrix[r-1][1],    //Matrix 2
-        r, display_matrix[r-1][2],    //Matrix 3
-        r, display_matrix[r-1][3],    //Matrix 4
-        r, display_matrix[r-1][4],    //Matrix 5
-        r, display_matrix[r-1][5],    //Matrix 6
-        r, display_matrix[r-1][6],    //Matrix 7
-        r, display_matrix[r-1][7]     //Matrix 8
+            r, GetMatrixByte(r-1, 0),  
+            r, GetMatrixByte(r-1, 8),  
+            r, GetMatrixByte(r-1, 16), 
+            r, GetMatrixByte(r-1, 24),
+            r, GetMatrixByte(r-1, 32),
+            r, GetMatrixByte(r-1, 40),
+            r, GetMatrixByte(r-1, 48),
+            r, GetMatrixByte(r-1, 56)
         );
-    
-    
-    }         
-
-
+    }
 }
 
+
+unsigned char GetMatrixByte(unsigned char row, unsigned char start_col) {
+    unsigned char b, result = 0;
+    for (b = 0; b < 8; b++) {
+        if (scroll_buffer[row][start_col + b] == 0x01) {
+            result |= (1 << (7 - b)); 
+        }
+    }
+    return result;
+}
+
+/*
 //display matrix initialization
 void Show(int char_index, int matrix_num){
     unsigned char s, b;
@@ -271,18 +281,119 @@ void Show(int char_index, int matrix_num){
         display_matrix[s][matrix_num] = mirrored_byte;
     }
 }
+*/
 
 void ClearBuffer(void) {
-    unsigned char r, m;
+   unsigned char r, c;
 
-   
+    
     for (r = 0; r < 8; r++) {
-       
-        for (m = 0; m < 8; m++) {
-           
-            display_matrix[r][m] = 0x00;
+        for (c = 0; c < 64; c++) {
+            scroll_buffer[r][c] = 0x00;
         }
     }
     
     UpdateDisplay();
 }
+
+void ScrollBlank(int count) {
+    int i;
+    unsigned char row;
+    unsigned char blank_col[8] = {0,0,0,0,0,0,0,0};
+    
+    for(i = 0; i < count; i++) {
+        ShiftLeft(blank_col);
+        UpdateDisplay();
+        delay_ms(10);
+    }
+}
+
+
+void ShiftLeft(unsigned char new_column[8]) {
+    unsigned char r, c;
+    
+    for (r = 0; r < 8; r++) {
+        // shit all columns to left
+        for (c = 0; c < 63; c++) {
+            scroll_buffer[r][c] = scroll_buffer[r][c+1];
+        }
+             
+       
+        if (new_column[r] == 1) {
+            // max7219 only accepts 16 bits
+            scroll_buffer[r][63] = 0x01;
+        } else {
+            scroll_buffer[r][63] = 0x00;
+        }    
+        
+        
+    }
+}
+
+
+
+void ScrollMessage(char* str) {
+    int i, char_idx;
+    unsigned char col, row, type; 
+    unsigned char current_col_data[8];
+    unsigned char row_data;
+
+    for (i = 0; str[i] != '\0'; i++) {
+        char c = str[i];
+        
+  
+        if (c >= 'A' && c <= 'Z') {
+            type = 0;
+            char_idx = c - 'A';
+        } 
+        else if (c >= 'a' && c <= 'z') {
+            type = 0; 
+            char_idx = (c - 'a') + 27; 
+        } 
+        else if (c == ' ') {
+            type = 0; 
+            char_idx = 26; 
+        }
+        else if (c >= '0' && c <= '9') {
+            type = 1;
+            char_idx = (c == '0') ? 9 : (c - '1');
+        }
+        else {
+            type = 0; 
+            char_idx = 26;
+        }
+
+      
+        for (col = 0; col < 8; col++) {
+            for (row = 0; row < 8; row++) {
+                
+              
+                if (type == 0) {
+                    row_data = font_alphabet[char_idx][row];
+                } else {
+                    row_data = font_numbers[char_idx][row];
+                }
+                
+             
+                if (row_data & (1 << col)) {
+                    current_col_data[row] = 1; 
+                } else {
+                    current_col_data[row] = 0;
+                }
+            }
+
+        
+            ShiftLeft(current_col_data);
+            UpdateDisplay();
+            delay_ms(10); 
+        }
+        
+     
+        for(row = 0; row < 8; row++) current_col_data[row] = 0;
+        ShiftLeft(current_col_data);
+        UpdateDisplay();
+        delay_ms(10);
+    }
+}
+
+
